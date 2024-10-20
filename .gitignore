@@ -3,8 +3,7 @@
 .venv
 .bashrn
 .idea
-**/.terraform*
-**/terraform*
+otus-practice-cloud-infra/infrastructure/terraform.tfvars.example
 
 # Mac OS-specific storage files
 .DS_Store
