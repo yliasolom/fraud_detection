@@ -22,7 +22,8 @@
 # 1. Создать новый backet в Yandex Cloud Object Storage с использованием terraform 
 
 - скрипт для создания: 
-`otus-practice-cloud-infra/infrastructure/main.tf`
+`infrastructure/main.tf`
+
 
 1. IAM ресурсы
 Сервисный аккаунт: Создается для доступа к ресурсам Yandex Cloud.
@@ -58,11 +59,13 @@ NAT-шлюз: Настраивается для обеспечения выхо�
 
 или просто по ссылке.
 
------ тут добавлю картину
+![Object Storage S3](https://github.com/yliasolom/fraud_detection/blob/main/imgs/%20s3.png)
 
 # 3. Создать Spark-кластер в Data Proc:
 
-Скрипт: `otus-practice-cloud-infra/infrastructure/create_dataporc.tf`
------- картника
+Скрипт: `infrastructure/create_dataporc.tf`
+![Data Proc](https://github.com/yliasolom/fraud_detection/blob/main/imgs/%20data_proc.png)
+
 
 # 4. Соединиться по SSH с мастер-узлом и выполнить на нём команду копирования содержимого хранилища в файловую систему HDFS с использованием инструмента hadoop distcp.
+![Data Proc files](https://github.com/yliasolom/fraud_detection/blob/main/imgs/hadoop.png)
