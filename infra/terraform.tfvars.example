@@ -1,7 +1,7 @@
 yc_config = {
-  token     = ""
-  cloud_id  = ""
-  folder_id = ""
+  token     = "t1.9euelZqJns6Rmo-eypeVmpnOj8eSjO3rnpWaiceZyc7Lmc2RjM-Rz46bicbl9Pc0WSxH-e90Ox_q3fT3dAcqR_nvdDsf6s3n9euelZqQnZnJmcfIl4nMm4-bjY6Yje_8xeuelZqQnZnJmcfIl4nMm4-bjY6YjQ.FmVnaAtSadb8qOjXTB1NxjSScnwpzTrRzcTmKt6bP9AE_WIjkb2qlNzM94a4BEJVO8tthYPUzYymvKhA7sWQAg"
+  cloud_id  = "b1ga9g8la21jqpmalko3"
+  folder_id = "b1gji7umt2bq8sadgnvl"
   zone      = "ru-central1-a"
 }
 yc_instance_user        = "ubuntu"
@@ -11,7 +11,7 @@ yc_subnet_name          = "airflow-subnet"
 yc_service_account_name = "airflow-vm-sa"
 yc_bucket_name          = "airflow-bucket"
 yc_storage_endpoint_url = "https://storage.yandexcloud.net"
-ubuntu_image_id         = "" # Airflow image
-public_key_path         = ""
-private_key_path        = ""
+ubuntu_image_id         = "fd8829m2l6d5lu2qip10"
+public_key_path          = "/Users/admin/.ssh/id_rsa.pub"
+private_key_path         = "/Users/admin/.ssh/id_rsa"
 airflow_db_conn_default = ""

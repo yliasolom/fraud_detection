@@ -19,3 +19,7 @@ variables.json
 auth.json
 authorized_key.json
 driveroutput.*
+/data
+.editorconfig
+pyproject.toml
+.env.example

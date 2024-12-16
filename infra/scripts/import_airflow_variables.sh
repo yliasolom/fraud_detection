@@ -5,6 +5,8 @@ function log() {
 }
 
 export AIRFLOW__CORE__SQL_ALCHEMY_CONN=${airflow_db_conn}
+#export AIRFLOW__CORE__SQL_ALCHEMY_CONN=$(airflow config get-value core sql_alchemy_conn)
+#export AIRFLOW__CORE__SQL_ALCHEMY_CONN="postgresql+psycopg2://airflow:airflow@localhost/airflow"
 
 # Запуск скрипта импорта переменных
 log 'Starting Airflow initialization...'

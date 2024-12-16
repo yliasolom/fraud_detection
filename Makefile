@@ -4,6 +4,10 @@ include .env
 
 .EXPORT_ALL_VARIABLES:
 
+# -i, -o StrictHostKeyChecking=no и
+# -o UserKnownHostsFile=/dev/null
+# отключают проверку подлинности хоста, чтобы избежать запроса на подтверждение.
+
 .PHONY: setup-airflow-variables
 setup-airflow-variables:
 	@echo "Running setup_airflow_variables.sh on $(AIRFLOW_HOST)..."
@@ -29,17 +33,17 @@ upload-src-to-bucket:
 	s3cmd put --recursive src/ s3://$(S3_BUCKET_NAME)/src/
 	@echo "Src uploaded successfully"
 
-.PHONY: upload-data-to-bucket
-upload-data-to-bucket:
-	@echo "Uploading data to $(S3_BUCKET_NAME)..."
-	s3cmd put --recursive data/input_data/*.csv s3://$(S3_BUCKET_NAME)/input_data/
-	@echo "Data uploaded successfully"
-
-.PHONY: download-output-data-from-bucket
-download-output-data-from-bucket:
-	@echo "Downloading output data from $(S3_BUCKET_NAME)..."
-	s3cmd get --recursive s3://$(S3_BUCKET_NAME)/output_data/ data/output_data/
-	@echo "Output data downloaded successfully"
+# .PHONY: upload-data-to-bucket
+# upload-data-to-bucket:
+# 	@echo "Uploading data to $(S3_BUCKET_NAME)..."
+# 	s3cmd put --recursive data/input_data/*.csv s3://$(S3_BUCKET_NAME)/input_data/
+# 	@echo "Data uploaded successfully"
+#
+# .PHONY: download-output-data-from-bucket
+# download-output-data-from-bucket:
+# 	@echo "Downloading output data from $(S3_BUCKET_NAME)..."
+# 	s3cmd get --recursive s3://$(S3_BUCKET_NAME)/output_data/ data/output_data/
+# 	@echo "Output data downloaded successfully"
 
 .PHONY: instance-list
 instance-list:

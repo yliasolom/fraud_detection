@@ -1,3 +1,4 @@
+#  для настройки сервисного аккаунта в Yandex Cloud с необходимыми правами и ключами доступа, которые затем сохраняются локально в виде JSON-файлов.
 resource "yandex_iam_service_account" "sa" {
   name        = var.name
   description = "Service account for VM management"

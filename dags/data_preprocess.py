@@ -97,7 +97,7 @@ setup_airflow_connections(YC_S3_CONNECTION, YC_SA_CONNECTION)
 with DAG(
     dag_id="data_preprocess",
     start_date=datetime(year=2024, month=1, day=20),
-    schedule_interval=timedelta(minutes=30),
+    schedule_interval=timedelta(minutes=10),
     catchup=False,
 ) as ingest_dag:
     # 1 этап: создание Dataproc клаcтера
@@ -113,26 +113,24 @@ with DAG(
         zone=YC_ZONE,
         cluster_image_version="2.0.43",
         # masternode
-        masternode_resource_preset="s3-c2-m8",
+        masternode_resource_preset="s3-c4-m16",
         masternode_disk_type="network-ssd",
-        masternode_disk_size=20,
         # datanodes
         datanode_resource_preset="s3-c4-m16",
         datanode_disk_type="network-ssd",
-        datanode_disk_size=80,
-        datanode_count=2,
+        datanode_count=1,
         # software
         services=["YARN", "SPARK", "HDFS", "MAPREDUCE"],
-        computenode_count=0,
+        computenode_count=1,
         connection_id=YC_SA_CONNECTION.conn_id,
         dag=ingest_dag,
     )
     # 2 этап: запуск задания PySpark
     poke_spark_processing = DataprocCreatePysparkJobOperator(
         task_id="dp-cluster-pyspark-task",
-        main_python_file_uri=f"s3a://{S3_SOURCE_BUCKET}/src/pyspark_script.py",
+        main_python_file_uri=f"s3a://{S3_SOURCE_BUCKET}/process_transaction_data.py",
         connection_id=YC_SA_CONNECTION.conn_id,
-        args=["--bucket", S3_BUCKET_NAME],
+        args=["--bucket", f"{S3_BUCKET_NAME}/processed_data"],
         dag=ingest_dag,
     )
     # 3 этап: удаление Dataproc кластера
