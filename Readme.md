@@ -8,4 +8,4 @@
 - **Spark** для обработки данных в распределенной среде.
 - **Dataproc** для работы с данными в Yandex Cloud.
 
-![Airflow Instance]([logs/airflow instance.png](https://github.com/yliasolom/fraud_detection/blob/HW-5/logs/airflow%20instance.png))
+![Airflow Instance](https://github.com/yliasolom/fraud_detection/blob/HW-5/logs/airflow%20instance.png)
