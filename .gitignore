@@ -3,6 +3,13 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+/mlruns/
+/mlartifacts/
+.env
+.ipynb_checkpoints
+.venv/
+/data/
+/notebooks/mlruns/
 # C extensions
 *.so
 

@@ -3,136 +3,181 @@ import logging
 from functools import partial
 
 import mlflow
-from hyperopt import fmin, tpe, hp, STATUS_OK, Trials, SparkTrials # type: ignore
+import numpy as np
+from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
 
 from pyspark.sql import SparkSession
-from pyspark.ml.feature import VectorAssembler, OneHotEncoder, StringIndexer
+from pyspark.ml.feature import VectorAssembler, StandardScaler
 from pyspark.ml.classification import LogisticRegression
 from pyspark.ml.evaluation import BinaryClassificationEvaluator
 from pyspark.ml import Pipeline
-
+from pyspark.sql import functions as F
+from pyspark.sql.types import FloatType
+from pyspark.sql.functions import month, dayofmonth, dayofweek, hour, minute
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(message)s")
 logger = logging.getLogger()
 
+import warnings
+warnings.filterwarnings(action='ignore', category=DeprecationWarning)
 
-def data_prep_pipeline():
-  
-  gender_index = StringIndexer(inputCol='Sex', outputCol='SexIndex')
-  gender_encoder = OneHotEncoder(inputCol='SexIndex', outputCol='SexVector')
+from dotenv import load_dotenv
+load_dotenv()
 
-  embark_indexer = StringIndexer(inputCol='Embarked', outputCol='EmbarkedIndex')
-  embark_encoder = OneHotEncoder(inputCol='EmbarkedIndex', outputCol='EmbarkVector')
+URI = os.environ['MLFLOW_TRACKING_URI']
 
-  assembler = VectorAssembler(
-    inputCols=[
-      'Pclass',
-      'SexVector',
-      'Age',
-      'SibSp',
-      'Parch',
-      'Fare',
-      'EmbarkVector'
-    ],
-    outputCol='Features'
-  )
+EXPERIMENT_NAME = 'fraud-classification'
+MODEL_NAME_MLFLOW = "best-fraud-detection"
 
-  return Pipeline(stages=[
-    gender_index,
-    embark_indexer,
-    gender_encoder,
-    embark_encoder,
-    assembler
-  ])
-
-
-# Определяем пространство поиска для hyperopt
 search_space = {
-  'regParam': hp.lognormal('regParam', 0, 1.0),
-  'fitIntercept': hp.choice('fitIntercept', [False, True])
+    'regParam': hp.lognormal('regParam', 0, 1.0),
 }
 
 
+def clean_data(df):
+    df = df.na.drop(how="all")
+    df = df.filter(~df.value.startswith("#"))
+
+    columns = ["transaction_id", "tx_datetime", "customer_id", "terminal_id",
+               "tx_amount", "tx_time_seconds", "tx_time_days", "tx_fraud", "tx_fraud_scenario"]
+
+    columns_to_cast = ["tx_amount", "tx_time_seconds", "tx_time_days", "tx_fraud"]
+
+    df = df.selectExpr("split(value, ',') as columns")
+    df = df.selectExpr(*[f"columns[{i}] as {col}" for i, col in enumerate(columns)])
+
+    for column in columns_to_cast:
+        df = df.withColumn(column, F.col(column).cast(FloatType()))
+
+    columns_to_rename = {cl: cl.replace('tx_', '') for cl in df.columns if cl.startswith('tx_')}
+    for old_col, new_col in columns_to_rename.items():
+        df = df.withColumnRenamed(old_col, new_col)
+
+    df = df.withColumn('month', month(F.col('datetime')).cast('float')) \
+        .withColumn('day', dayofmonth(F.col('datetime')).cast('float')) \
+        .withColumn('day_of_week', dayofweek(F.col('datetime')).cast('float')) \
+        .withColumn('hour', hour(F.col('datetime')).cast('float')) \
+        .withColumn('minute', minute(F.col('datetime')).cast('float'))
+
+    df = df.na.drop()
+    df = df.withColumn('fraud', F.col('fraud').cast('float'))
+
+    return df
+
+
+def data_prep_pipeline():
+    TRAIN_COLUMNS = [
+                'amount',
+                'month',
+                'day',
+                'day_of_week',
+                'minute'
+    ]
+
+    assembler = VectorAssembler(
+        inputCols=TRAIN_COLUMNS,
+        outputCol='Features'
+    )
+
+    scaler = StandardScaler(
+        inputCol='Features',
+        outputCol='ScaledFeatures'
+    )
+
+    dataproc = Pipeline(stages=[
+        assembler, scaler
+    ])
+
+    return dataproc
+
+
 def objective(params, train_data, test_data):
+    lr = LogisticRegression() \
+        .setMaxIter(700) \
+        .setRegParam(params['regParam']) \
+        .setFeaturesCol('Features') \
+        .setLabelCol('fraud')
 
-  lr = LogisticRegression()\
-    .setMaxIter(1000)\
-    .setRegParam(params['regParam'])\
-    .setFeaturesCol('Features')\
-    .setLabelCol('Survived')
+    evaluator = BinaryClassificationEvaluator() \
+        .setLabelCol('fraud')
 
-  evaluator = BinaryClassificationEvaluator()\
-    .setLabelCol('Survived')
+    lg_model = lr.fit(train_data)
+    print(f"Coefficients: {lg_model.coefficients}\nIntercept: {lg_model.intercept}")
+    print(f"accuracy: {lg_model.summary.accuracy}")
+    print(f"weighted Precision: {lg_model.summary.weightedPrecision}")
 
-  lg_model = lr.fit(train_data)
+    auc = evaluator.evaluate(lg_model.transform(test_data))
 
-  auc = evaluator.evaluate(lg_model.transform(test_data))
+    with mlflow.start_run():
+        mlflow.set_tag('experimental', 'hw-6')
+        mlflow.log_params(params)
+        mlflow.log_metric('auc', auc)
 
-  with mlflow.start_run():
-    mlflow.set_tag('experimentalist', 'robot')
-    mlflow.log_params(params)
-    mlflow.log_metric('auc', auc)
-  
-  return {'loss': -auc, 'status': STATUS_OK}
+    return {'loss': -auc, 'status': STATUS_OK}
 
 
-def main():
+def getBestModelfromTrials(trials):
+    valid_trial_list = [trial for trial in trials
+                            if STATUS_OK == trial['result']['status']]
+    losses = [float(trial['result']['loss']) for trial in valid_trial_list]
+    index_having_minumum_loss = np.argmin(losses)
+    best_trial_obj = valid_trial_list[index_having_minumum_loss]
+    return best_trial_obj['result']['Trained_Model']
 
-  logger.info("Creating Spark Session ...")
-  
-  spark = SparkSession\
-    .builder\
-    .appName('Spark ML Research')\
-    .config('spark.sql.repl.eagerEval.enabled', True) \
-    .getOrCreate()
-    
-  logger.info(spark)
 
-  df = spark.read.csv(
-    's3a://mlops204-dataproc-bucket/data/titanic/train.csv', 
-    header=True, 
-    inferSchema=True
-  )
+def main(data_path):
+    logger.info("Creating Spark Session ...")
 
-  df = df.select([
-    'Survived',
-    'Pclass',
-    'Sex',
-    'Age',
-    'SibSp',
-    'Parch',
-    'Fare',
-    'Embarked'
-  ]).na.drop()
+    spark = SparkSession \
+        .builder \
+        .appName('Spark ML Research') \
+        .config('spark.sql.repl.eagerEval.enabled', True) \
+        .getOrCreate()
 
-  logger.info(df.limit(10).toPandas())
+    logger.info(spark)
 
-  dataproc = data_prep_pipeline()
+    df = spark.read.text(f"{data_path}/*.txt")
+    df = clean_data(df)
+    logger.info(df.limit(5).toPandas())
 
-  ready_data = dataproc.fit(df).transform(df)
+    dataproc = data_prep_pipeline()
 
-  train_data, test_data = ready_data.randomSplit([.7, .3])
+    ready_data = dataproc.fit(df).transform(df)
 
-  trials = Trials()
+    train_data, test_data = ready_data.randomSplit([.7, .3])
 
-  mlflow.set_experiment('classification')
+    trials = Trials()
 
-  best = fmin(
-    fn=partial(
-        objective, 
-        train_data=train_data,
-        test_data=test_data
-    ),
-    space=search_space,
-    algo=tpe.suggest,
-    max_evals=10,
-    trials=trials
-  )
+    mlflow.set_experiment(EXPERIMENT_NAME)
+    mlflow.set_tracking_uri(URI)
+
+    best_params = fmin(
+        fn=partial(
+            objective,
+            train_data=train_data,
+            test_data=test_data
+        ),
+        space=search_space,
+        algo=tpe.suggest,
+        max_evals=10,
+        trials=trials
+    )
+
+    lr = LogisticRegression() \
+        .setMaxIter(700) \
+        .setRegParam(best_params['regParam']) \
+        .setFeaturesCol('Features') \
+        .setLabelCol('fraud')
+
+    best_model = lr.fit(train_data)
+
+    with mlflow.start_run() as run:
+        mlflow.spark.log_model(best_model, artifact_path="models", registered_model_name=MODEL_NAME_MLFLOW)
+        print(f"Saved/registered in Run ID: {run.info.run_id}")
+        mlflow.end_run()
+
+    spark.stop()
 
 
 if __name__ == "__main__":
-
-  os.environ['MLFLOW_S3_ENDPOINT_URL'] = 'https://storage.yandexcloud.net'
-  os.environ['MLFLOW_TRACKING_URI']='http://10.0.0.35:8000'
-
-  main()
+    main(data_path=os.environ['DATA_PATH'])
