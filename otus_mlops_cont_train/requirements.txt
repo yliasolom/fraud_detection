@@ -1,0 +1,6 @@
+mlflow
+numpy
+hyperopt
+pyspark
+python-dotenv
+psycopg2

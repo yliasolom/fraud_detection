@@ -1,0 +1,27 @@
+services:
+  db:
+    restart: always
+    image: postgres
+    container_name: mlflow_db
+    ports:
+      - "5432:5432"
+    networks:
+      - backend
+    environment:
+      POSTGRES_USER: ${MLFLOW_PG_USER}
+      POSTGRES_PASSWORD: ${MLFLOW_PG_PASSWORD}
+      POSTGRES_DATABASE: ${MLFLOW_PG_DATABASE}
+    volumes:
+      - db_data:/var/lib/postgresql/data/
+    healthcheck:
+      test: ["CMD", "pg_isready", "-p", "5432", "-U", "${MLFLOW_PG_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  db_data:
+
+networks:
+  backend:
+    driver: bridge
