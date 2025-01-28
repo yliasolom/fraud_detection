@@ -31,13 +31,13 @@
 
 Эндпоинт и путь к данным указан в файле `.env`
 
-![img.png](imgs/img.png)
-![img.png](imgs/img1s/img.png)
+![img.png](otus_mlops_cont_train/imgs/img.png)
+![img.png](otus_mlops_cont_train/imgs/img1s/img.png)
 
 ### 2) A/B тестирование модели `dags/ab_test.py`
 
-![img_1.png](imgs/img_1.png)
-![img_2.png](imgs/img_2.png)
+![img_1.png](otus_mlops_cont_train/imgs/img_1.png)
+![img_2.png](otus_mlops_cont_train/imgs/img_2.png)
 
 
 ## Вывод: на основании t-test
